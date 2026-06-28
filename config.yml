@@ -1,0 +1,43 @@
+# ShieldLLM Configuration
+# Override any value via the corresponding environment variable.
+# See security/config.py for the full env var mapping.
+
+server:
+  port: 8080
+  host: 0.0.0.0
+
+upstream:
+  # CHANGE_ME: Replace with your actual LLM provider URL
+  primary_url: "https://api.openai.com/v1/chat/completions"
+  # CHANGE_ME (optional): Backup provider if primary fails
+  backup_url: "https://api.deepseek.com/v1/chat/completions"
+  timeout: 60.0
+  per_endpoint_timeout: 30.0
+
+rate_limiter:
+  window_seconds: 60
+  max_tokens: 400
+
+circuit_breaker:
+  threshold: 3
+  reset_seconds: 300
+
+egress:
+  max_response_chars: 10000
+
+ingress:
+  max_message_chars: 16000
+
+cache:
+  max_entries: 1000
+  ttl_seconds: 3600
+
+ip_filter:
+  # CHANGE_ME: Restrict access to specific IPs/CIDRs (empty = allow all)
+  allowlist: []
+  # CHANGE_ME: Block specific IPs/CIDRs
+  blocklist: []
+
+logging:
+  level: INFO
+  json: true

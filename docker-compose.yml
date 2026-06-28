@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  shieldllm:
+    build: .
+    container_name: shieldllm
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - UPSTREAM_TIMEOUT=60.0
+      # CHANGE_ME: Set your actual LLM provider URL
+      - LLM_PRIMARY_URL=https://api.openai.com/v1/chat/completions
+      # CHANGE_ME (optional): Backup provider URL
+      - LLM_BACKUP_URL=https://api.deepseek.com/v1/chat/completions
+      - LLM_TIMEOUT=30
+      - CB_THRESHOLD=3
+      - CB_RESET_SECONDS=300
+      # Uncomment to enable ML guard model (requires onnxruntime + tokenizers)
+      # - GUARD_MODEL_ENABLED=true
+      # - GUARD_MODEL_CONFIDENCE=0.7
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShieldLLM — AI Firewall</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-primary:#0a0e1a;
+  --bg-secondary:#111827;
+  --bg-card:rgba(17,24,39,0.7);
+  --bg-card-hover:rgba(31,41,55,0.9);
+  --border:rgba(99,102,241,0.12);
+  --border-glow:rgba(99,102,241,0.35);
+  --text-primary:#f1f5f9;
+  --text-secondary:#94a3b8;
+  --text-muted:#64748b;
+  --cyan:#06b6d4;
+  --blue:#3b82f6;
+  --indigo:#6366f1;
+  --purple:#8b5cf6;
+  --green:#10b981;
+  --red:#ef4444;
+  --amber:#f59e0b;
+  --pink:#ec4899;
+  --gradient-primary:linear-gradient(135deg,#06b6d4,#6366f1);
+  --gradient-danger:linear-gradient(135deg,#ef4444,#ec4899);
+  --gradient-success:linear-gradient(135deg,#10b981,#06b6d4);
+  --shadow:0 8px 40px rgba(0,0,0,0.6);
+  --radius:14px;
+  --radius-sm:8px;
+}
+html{font-size:14px;scroll-behavior:smooth}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;
+  background:var(--bg-primary);color:var(--text-primary);min-height:100vh;overflow-x:hidden;
+}
+body::before{content:'';position:fixed;top:0;left:0;right:0;bottom:0;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(99,102,241,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 30%, rgba(139,92,246,0.05) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 70%, rgba(6,182,212,0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 10% 80%, rgba(59,130,246,0.04) 0%, transparent 50%);
+  pointer-events:none;z-index:0;
+  animation:bgShift 20s ease-in-out infinite alternate;
+}
+@keyframes bgShift{0%{transform:scale(1)}100%{transform:scale(1.1)}}
+
+/* ─── Floating particles ─── */
+.particles{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:0;overflow:hidden}
+.p{position:absolute;border-radius:50%;opacity:0;animation:float linear infinite}
+.p1{width:3px;height:3px;background:var(--indigo);left:10%;animation-duration:18s;animation-delay:0s}
+.p2{width:2px;height:2px;background:var(--cyan);left:25%;animation-duration:22s;animation-delay:2s}
+.p3{width:4px;height:4px;background:var(--purple);left:40%;animation-duration:16s;animation-delay:4s}
+.p4{width:2px;height:2px;background:var(--blue);left:55%;animation-duration:20s;animation-delay:1s}
+.p5{width:3px;height:3px;background:var(--indigo);left:70%;animation-duration:24s;animation-delay:3s}
+.p6{width:2px;height:2px;background:var(--cyan);left:85%;animation-duration:19s;animation-delay:5s}
+.p7{width:4px;height:4px;background:var(--purple);left:50%;animation-duration:21s;animation-delay:6s}
+.p8{width:2px;height:2px;background:var(--blue);left:15%;animation-duration:17s;animation-delay:2.5s}
+.p9{width:3px;height:3px;background:var(--indigo);left:65%;animation-duration:23s;animation-delay:4.5s}
+.p10{width:2px;height:2px;background:var(--cyan);left:35%;animation-duration:15s;animation-delay:3.5s}
+.p11{width:3px;height:3px;background:var(--purple);left:90%;animation-duration:25s;animation-delay:1.5s}
+.p12{width:2px;height:2px;background:var(--indigo);left:5%;animation-duration:20s;animation-delay:5.5s}
+@keyframes float{0%{transform:translateY(100vh) scale(0);opacity:0}10%{opacity:0.8}90%{opacity:0.8}100%{transform:translateY(-10vh) scale(1);opacity:0}}
+
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--text-muted);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text-secondary)}
+::selection{background:rgba(168,85,247,0.3);color:#fff}
+code,.mono{font-family:'SF Mono','JetBrains Mono','Fira Code','Cascadia Code',Menlo,Monaco,monospace}
+
+/* ─── Header ─── */
+.header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 32px;background:rgba(5,5,12,0.85);
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:100;
+  backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);
+  transition:box-shadow 0.4s;
+}
+.header.scrolled{box-shadow:0 4px 40px rgba(99,102,241,0.1)}
+.header-left{display:flex;align-items:center;gap:16px}
+.header-logo{
+  width:38px;height:38px;border-radius:10px;
+  background:var(--gradient-primary);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 20px rgba(6,182,212,0.3);
+  transition:transform 0.3s,box-shadow 0.3s;
+}
+.header-logo:hover{transform:scale(1.05);box-shadow:0 0 32px rgba(6,182,212,0.5)}
+.header-logo svg{width:20px;height:20px}
+.header-title{font-size:20px;font-weight:800;letter-spacing:-0.5px}
+.header-title span{background:var(--gradient-primary);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.header-badge{
+  font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;
+  padding:3px 10px;border-radius:20px;
+  background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.2);
+  color:var(--green);margin-left:10px;animation:badgePulse 3s ease-in-out infinite
+}
+@keyframes badgePulse{0%,100%{opacity:1}50%{opacity:0.6}}
+.header-right{display:flex;align-items:center;gap:18px}
+.header-status{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text-secondary);font-weight:500}
+.header-status-dot{
+  width:9px;height:9px;border-radius:50%;background:var(--green);
+  animation:livePulse 2s ease-in-out infinite;
+  box-shadow:0 0 12px rgba(16,185,129,0.4)
+}
+@keyframes livePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.85)}}
+.header-uptime{font-size:12px;color:var(--text-muted);background:rgba(100,116,139,0.15);padding:4px 12px;border-radius:20px}
+
+/* ─── Layout ─── */
+.container{max-width:1440px;margin:0 auto;padding:24px 28px 60px;position:relative;z-index:1}
+.grid{display:grid;gap:18px}
+.grid-cols-4{grid-template-columns:repeat(4,1fr)}
+.grid-cols-2{grid-template-columns:repeat(2,1fr)}
+@media(max-width:1200px){.grid-cols-4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:768px){.grid-cols-4,.grid-cols-2{grid-template-columns:1fr}.container{padding:14px}.header{padding:12px 16px;flex-wrap:wrap;gap:10px}}
+
+/* ─── Card ─── */
+.card{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:22px;
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  box-shadow:var(--shadow);position:relative;overflow:hidden
+}
+.card::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
+  background:linear-gradient(135deg,rgba(99,102,241,0.03),transparent 50%);
+  pointer-events:none}
+.card:hover{transform:translateY(-3px);border-color:var(--border-glow);box-shadow:0 16px 48px rgba(0,0,0,0.5),0 0 30px rgba(99,102,241,0.05)}
+.card-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:16px;padding-bottom:14px;
+  border-bottom:1px solid var(--border);position:relative;z-index:1
+}
+.card-title{font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px}
+
+/* ─── Stats ─── */
+.stat-card{padding:20px 22px;position:relative;overflow:hidden;cursor:pointer}
+.stat-card:active{transform:scale(0.97)}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;z-index:1}
+.stat-card.s-purple::before{background:linear-gradient(90deg,var(--purple),var(--indigo));box-shadow:0 0 24px rgba(139,92,246,0.3)}
+.stat-card.s-green::before{background:linear-gradient(90deg,var(--green),var(--cyan));box-shadow:0 0 24px rgba(16,185,129,0.3)}
+.stat-card.s-red::before{background:linear-gradient(90deg,var(--red),var(--pink));box-shadow:0 0 24px rgba(239,68,68,0.3)}
+.stat-card.s-amber::before{background:linear-gradient(90deg,var(--amber),var(--pink));box-shadow:0 0 24px rgba(245,158,11,0.3)}
+.stat-card.s-blue::before{background:linear-gradient(90deg,var(--blue),var(--purple));box-shadow:0 0 24px rgba(59,130,246,0.3)}
+.stat-card.s-cyan::before{background:linear-gradient(90deg,var(--cyan),var(--blue));box-shadow:0 0 24px rgba(6,182,212,0.3)}
+.stat-icon-deco{
+  position:absolute;right:12px;top:12px;opacity:0.06;pointer-events:none;transition:opacity 0.5s
+}
+.stat-icon-deco svg{width:52px;height:52px;fill:currentColor;color:var(--indigo)}
+.stat-card:hover .stat-icon-deco{opacity:0.12}
+.stat-value{
+  font-size:30px;font-weight:800;letter-spacing:-1px;line-height:1;margin-bottom:6px;
+  position:relative;z-index:1
+}
+.stat-label{
+  font-size:10px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.8px;
+  display:flex;align-items:center;gap:5px;position:relative;z-index:1
+}
+.stat-label svg{width:11px;height:11px;fill:currentColor}
+
+/* ─── Feed ─── */
+.feed-scroll{max-height:520px;overflow-y:auto;position:relative;z-index:1;cursor:pointer}
+.feed-scroll:not(:hover)::-webkit-scrollbar-thumb{background:transparent}
+.feed-empty{text-align:center;padding:50px 20px;color:var(--text-muted);font-size:13px}
+.feed-item{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:10px 0;border-bottom:1px solid rgba(168,85,247,0.04);
+  font-size:12px;animation:feedSlide 0.45s cubic-bezier(0.16,1,0.3,1)
+}
+@keyframes feedSlide{from{opacity:0;transform:translateX(-20px) scale(0.96)}to{opacity:1;transform:translateX(0) scale(1)}}
+.feed-item:last-child{border-bottom:none}
+.feed-dot{
+  min-width:9px;width:9px;height:9px;border-radius:50%;margin-top:4px;flex-shrink:0;position:relative
+}
+.feed-dot::after{content:'';position:absolute;top:-3px;left:-3px;right:-3px;bottom:-3px;border-radius:50%;animation:ripple 2s ease-out infinite;opacity:0}
+@keyframes ripple{0%{transform:scale(0.5);opacity:0.6}100%{transform:scale(2.5);opacity:0}}
+.feed-dot.f-egress{background:var(--red);box-shadow:0 0 12px rgba(239,68,68,0.5)}
+.feed-dot.f-egress::after{background:rgba(239,68,68,0.3)}
+.feed-dot.f-rate{background:var(--amber);box-shadow:0 0 12px rgba(245,158,11,0.5)}
+.feed-dot.f-rate::after{background:rgba(245,158,11,0.3)}
+.feed-dot.f-allowed{background:var(--green);box-shadow:0 0 12px rgba(16,185,129,0.5)}
+.feed-dot.f-allowed::after{background:rgba(16,185,129,0.3)}
+.feed-dot.f-cache{background:var(--cyan);box-shadow:0 0 12px rgba(6,182,212,0.5)}
+.feed-dot.f-cache::after{background:rgba(6,182,212,0.3)}
+.feed-dot.f-error{background:var(--pink);box-shadow:0 0 12px rgba(236,72,153,0.5)}
+.feed-dot.f-error::after{background:rgba(236,72,153,0.3)}
+.feed-dot.f-config{background:var(--purple);box-shadow:0 0 12px rgba(139,92,246,0.5)}
+.feed-dot.f-config::after{background:rgba(139,92,246,0.3)}
+.feed-content{flex:1;min-width:0}
+.feed-type{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.5px}
+.feed-detail{color:var(--text-secondary);margin-top:2px;word-break:break-word;font-size:11px;line-height:1.4}
+.feed-time{font-size:10px;color:var(--text-muted);margin-top:3px}
+
+/* ─── Chart ─── */
+.chart-wrap{position:relative;height:260px;z-index:1}
+.chart-wrap canvas{width:100%;height:100%;display:block}
+.chart-fallback{display:none;text-align:center;padding:60px 20px;color:var(--text-muted);font-size:13px}
+
+/* ─── Tabs ─── */
+.tabs{
+  display:flex;gap:2px;margin-bottom:18px;background:rgba(0,0,0,0.3);
+  border-radius:var(--radius-sm);padding:4px;overflow-x:auto;position:relative;z-index:1;
+  border:1px solid rgba(99,102,241,0.06)
+}
+.tab-btn{
+  flex:1;padding:9px 14px;border:none;background:transparent;
+  color:var(--text-muted);font-size:10px;font-weight:700;cursor:pointer;
+  border-radius:5px;transition:all 0.3s;font-family:inherit;white-space:nowrap;
+  text-transform:uppercase;letter-spacing:0.6px
+}
+.tab-btn:hover{color:var(--text-primary);background:rgba(99,102,241,0.08)}
+.tab-btn.active{
+  background:linear-gradient(135deg,rgba(6,182,212,0.15),rgba(99,102,241,0.1));
+  color:var(--cyan);box-shadow:0 0 16px rgba(6,182,212,0.1)
+}
+.tab-content{display:none;animation:tabFade 0.35s ease}
+@keyframes tabFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.tab-content.active{display:block}
+
+/* ─── Forms ─── */
+.form-group{margin-bottom:16px}
+.form-label{
+  display:block;font-size:9px;font-weight:700;color:var(--text-secondary);
+  text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px
+}
+.form-input{
+  width:100%;padding:10px 14px;background:rgba(0,0,0,0.4);border:1px solid var(--border);
+  border-radius:var(--radius-sm);color:var(--text-primary);font-size:13px;
+  transition:all 0.25s;outline:none
+}
+.form-input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(6,182,212,0.1),0 0 16px rgba(6,182,212,0.05)}
+.form-input::placeholder{color:var(--text-muted)}
+textarea.form-input{resize:vertical;line-height:1.5}
+.form-row{display:flex;gap:10px;align-items:end}
+.form-row .form-group{flex:1;margin-bottom:0}
+
+/* ─── Buttons ─── */
+.btn{
+  padding:9px 20px;border:none;border-radius:var(--radius-sm);
+  font-size:11px;font-weight:700;cursor:pointer;transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  font-family:inherit;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;
+  text-transform:uppercase;letter-spacing:0.4px;position:relative;overflow:hidden
+}
+.btn svg{width:13px;height:13px;fill:currentColor}
+.btn-primary{background:var(--gradient-primary);color:#fff}
+.btn-primary:hover{box-shadow:0 0 32px rgba(6,182,212,0.4);transform:translateY(-2px)}
+.btn-primary:active{transform:translateY(0)}
+.btn-danger{background:var(--gradient-danger);color:#fff}
+.btn-danger:hover{box-shadow:0 0 32px rgba(239,68,68,0.4);transform:translateY(-2px)}
+.btn-ghost{background:transparent;color:var(--text-muted);border:1px solid var(--border)}
+.btn-ghost:hover{background:rgba(99,102,241,0.1);color:var(--text-primary);border-color:var(--border-glow);transform:translateY(-1px)}
+.btn-sm{padding:6px 12px;font-size:10px}
+.btn-icon{width:30px;height:30px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:6px}
+
+/* ─── Rules ─── */
+.rule-scroll{max-height:260px;overflow-y:auto;margin-top:8px}
+.rule-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:7px 10px;border-radius:6px;font-size:12px;
+  color:var(--text-secondary);transition:all 0.2s;margin-bottom:2px
+}
+.rule-item:hover{background:rgba(99,102,241,0.06)}
+.rule-item .btn{opacity:0;transition:all 0.2s}
+.rule-item:hover .btn{opacity:1}
+.rule-item .btn:hover{background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.3);color:var(--red)}
+.rule-empty{color:var(--text-muted);font-size:12px;padding:12px 0}
+
+/* ─── Toast ─── */
+.toast-box{
+  position:fixed;bottom:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:8px;pointer-events:none
+}
+.toast{
+  padding:12px 20px;border-radius:var(--radius-sm);font-size:12px;font-weight:500;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  box-shadow:0 8px 40px rgba(0,0,0,0.6);
+  display:flex;align-items:center;gap:10px;
+  animation:toastPop 0.45s cubic-bezier(0.16,1,0.3,1);
+  max-width:380px;pointer-events:auto
+}
+@keyframes toastPop{from{opacity:0;transform:translateX(40px) scale(0.9)}to{opacity:1;transform:translateX(0) scale(1)}}
+.toast.t-success{background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.2);color:var(--green)}
+.toast.t-error{background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.2);color:var(--red)}
+.toast.t-info{background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.2);color:var(--cyan)}
+
+/* ─── Modal ─── */
+.modal-overlay{
+  position:fixed;top:0;left:0;right:0;bottom:0;z-index:1000;
+  background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);
+  display:none;align-items:center;justify-content:center;
+  animation:modalFadeIn 0.25s ease;
+}
+.modal-overlay.open{display:flex}
+@keyframes modalFadeIn{from{opacity:0}to{opacity:1}}
+.modal-box{
+  background:var(--bg-secondary);border:1px solid var(--border-glow);
+  border-radius:var(--radius);padding:28px;max-width:560px;width:90%;
+  max-height:80vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,0.8);
+  animation:modalSlideIn 0.3s cubic-bezier(0.16,1,0.3,1);
+  position:relative;
+}
+@keyframes modalSlideIn{from{opacity:0;transform:translateY(30px) scale(0.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+.modal-close{
+  position:absolute;top:16px;right:16px;width:32px;height:32px;
+  border-radius:50%;border:1px solid var(--border);
+  background:rgba(0,0,0,0.4);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--text-muted);transition:all 0.25s;
+}
+.modal-close:hover{background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.3);color:var(--red)}
+.modal-close svg{width:14px;height:14px}
+.modal-title{font-size:18px;font-weight:800;margin-bottom:6px}
+.modal-badge{
+  display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:0.6px;padding:4px 12px;border-radius:20px;margin-bottom:16px;
+}
+.modal-badge.m-block{background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.2);color:var(--red)}
+.modal-badge.m-allowed{background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.2);color:var(--green)}
+.modal-badge.m-rate{background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.2);color:var(--amber)}
+.modal-badge.m-cache{background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.2);color:var(--cyan)}
+.modal-field{margin-bottom:12px}
+.modal-field-label{
+  font-size:9px;font-weight:700;color:var(--text-muted);
+  text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px;
+}
+.modal-field-value{
+  font-size:13px;color:var(--text-primary);word-break:break-word;
+  background:rgba(0,0,0,0.3);padding:8px 12px;border-radius:6px;
+}
+.modal-field-value.mono{font-family:Menlo,Monaco,monospace;font-size:12px}
+</style>
+</head>
+<body>
+
+<!-- Particles -->
+<div class="particles">
+  <div class="p p1"></div><div class="p p2"></div><div class="p p3"></div>
+  <div class="p p4"></div><div class="p p5"></div><div class="p p6"></div>
+  <div class="p p7"></div><div class="p p8"></div><div class="p p9"></div>
+  <div class="p p10"></div><div class="p p11"></div><div class="p p12"></div>
+</div>
+
+<!-- Icons -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+
+  <symbol id="i-shield" viewBox="0 0 512 512"><path d="M256 0c4.6 0 9.2 1 13.4 2.9L457.7 82.8c22 9.3 38.4 31 38.3 57.2-.5 99.2-41.3 280.7-213.7 363.2-16.7 8-36.1 8-52.8 0C57.3 420.7 16.5 239.2 16 140c-.1-26.2 16.3-47.9 38.3-57.2L242.7 2.9C246.8 1 251.4 0 256 0z"/></symbol>
+  <symbol id="i-shield-halved" viewBox="0 0 512 512"><path d="M256 0c4.6 0 9.2 1 13.4 2.9L457.7 82.8c22 9.3 38.4 31 38.3 57.2-.5 99.2-41.3 280.7-213.7 363.2-16.7 8-36.1 8-52.8 0C57.3 420.7 16.5 239.2 16 140c-.1-26.2 16.3-47.9 38.3-57.2L242.7 2.9C246.8 1 251.4 0 256 0zm0 66.8V444.8C394.2 381.1 430.2 236.7 443.1 142L256 66.8z"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 448 512"><path d="M438.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-160-160c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L338.8 224 32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l306.7 0L233.4 393.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l160-160z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 448 512"><path d="M438.6 105.4c12.5 12.5 12.5 32.8 0 45.3l-256 256c-12.5 12.5-32.8 12.5-45.3 0l-128-128c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L160 338.7 393.4 105.4c12.5-12.5 32.8-12.5 45.3 0z"/></symbol>
+  <symbol id="i-ban" viewBox="0 0 512 512"><path d="M367.2 412.5L99.5 144.8C77.1 176.1 64 214.5 64 256c0 106 86 192 192 192c41.5 0 79.9-13.1 111.2-35.5zm45.3-45.3C434.9 335.9 448 297.5 448 256c0-106-86-192-192-192c-41.5 0-79.9 13.1-111.2 35.5L412.5 367.2zM512 256c0 141.4-114.6 256-256 256S0 397.4 0 256S114.6 0 256 0S512 114.6 512 256z"/></symbol>
+  <symbol id="i-gauge" viewBox="0 0 512 512"><path d="M512 256c0 141.4-114.6 256-256 256S0 397.4 0 256S114.6 0 256 0S512 114.6 512 256zM320 352c0-35.3-28.7-64-64-64c-11.5 0-22.3 3-31.6 8.4L145 207c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l79.4 79.4C188.3 332.7 184 343.7 184 356c0 39.8 32.2 72 72 72s72-32.2 72-72z"/></symbol>
+  <symbol id="i-database" viewBox="0 0 448 512"><path d="M448 80v48c0 44.2-100.3 80-224 80S0 172.2 0 128V80C0 35.8 100.3 0 224 0S448 35.8 448 80zM393.2 214.7c20.8-7.4 39.9-16.9 54.8-28.6V288c0 44.2-100.3 80-224 80S0 332.2 0 288V186.1c14.9 11.8 34 21.2 54.8 28.6C99.7 230.7 159.5 240 224 240s124.3-9.3 169.2-25.3zM0 346.1c14.9 11.8 34 21.2 54.8 28.6C99.7 390.7 159.5 400 224 400s124.3-9.3 169.2-25.3c20.8-7.4 39.9-16.9 54.8-28.6V432c0 44.2-100.3 80-224 80S0 476.2 0 432V346.1z"/></symbol>
+  <symbol id="i-triangle" viewBox="0 0 512 512"><path d="M256 32c14.2 0 27.3 7.5 34.5 19.8l216 368c7.3 12.4 7.3 27.7 .2 40.1S486.3 480 472 480H40c-14.3 0-27.6-7.7-34.7-20.1s-7-27.8 .2-40.1l216-368C228.7 39.5 241.8 32 256 32z"/></symbol>
+  <symbol id="i-coins" viewBox="0 0 512 512"><path d="M0 93.7l0 60.4c0 35.3 74.7 64 160 64s160-28.7 160-64l0-60.4C291.8 108.5 228.5 112 160 112S28.2 108.5 0 93.7zM320 193.7l0 52.4c0 35.3-74.7 64-160 64S0 281.3 0 246l0-52.4c28.2 17.3 91.5 20.4 160 20.4s131.8-3.1 160-20.4zM0 300.4l0 52.4c0 35.3 74.7 64 160 64s160-28.7 160-64l0-52.4c-28.2 17.3-91.5 20.4-160 20.4S28.2 317.7 0 300.4z"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 448 512"><path d="M349.4 44.6c5.9-13.7 1.5-29.7-10.6-38.5s-28.6-8-39.9 1.8l-256 224c-10 8.8-13.6 22.9-8.9 35.3S50.7 288 64 288H175.5L98.6 467.4c-5.9 13.7-1.5 29.7 10.6 38.5s28.6 8 39.9-1.8l256-224c10-8.8 13.6-22.9 8.9-35.3s-16.6-20.7-30-20.7H272.5L349.4 44.6z"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 512 512"><path d="M64 64c0-17.7-14.3-32-32-32S0 46.3 0 64V400c0 44.2 35.8 80 80 80H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H80c-8.8 0-16-7.2-16-16V64zm406.6 86.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L320 210.7l-57.4-57.4c-12.5-12.5-32.8-12.5-45.3 0l-96 96c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L240 221.3l57.4 57.4c12.5 12.5 32.8 12.5 45.3 0l128-128z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 448 512"><path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z"/></symbol>
+  <symbol id="i-xmark" viewBox="0 0 384 512"><path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z"/></symbol>
+  <symbol id="i-floppy" viewBox="0 0 448 512"><path d="M64 0C28.7 0 0 28.7 0 64V448c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V163.9c0-12.7-5.1-24.9-14.1-33.9L354.1 14.1c-9-9-21.2-14.1-33.9-14.1H64zm48 256c0-17.7 14.3-32 32-32H304c17.7 0 32 14.3 32 32v96c0 17.7-14.3 32-32 32H144c-17.7 0-32-14.3-32-32V256z"/></symbol>
+  <symbol id="i-broom" viewBox="0 0 576 512"><path d="M566.6 54.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-192 192-34.7-34.7c-4.7-4.7-12.3-4.7-17 0l-32 32c-4.7 4.7-4.7 12.3 0 17l34.7 34.7L192 336l-64 64-32 32-32 32L0 512l48-32 32-32 32-32 64-64 96-96 34.7 34.7c4.7 4.7 12.3 4.7 17 0l32-32c4.7-4.7 4.7-12.3 0-17l-34.7-34.7 192-192z"/></symbol>
+  <symbol id="i-rotate" viewBox="0 0 512 512"><path d="M142.9 142.9c-17.8 17.8-31.1 38.5-39.1 60.9c-5.6 15.6-22.6 23.7-38.2 18.1s-23.7-22.6-18.1-38.2c11.2-31.2 29.7-59.7 54.1-84.1C134.8 67.1 183.4 48 235.4 48c51.5 0 100 19.4 136.5 54.8l21.2 21.2-10.3 10.3c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9l64-64c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9l-10.3 10.3-21.2-21.2C383.5 20.4 312.2 0 235.4 0C168.7 0 108.8 23.9 64 64.4C38.3 88 17.6 116.1 3.3 147.2C-2.3 162.6 5.9 179.6 21.4 185.2s23.7-2.6 29.3-18.1c6.1-17.2 15.3-33.2 27.9-45.8l64-64zM369.1 369.1c17.8-17.8 31.1-38.5 39.1-60.9c5.6-15.6 22.6-23.7 38.2-18.1s23.7 22.6 18.1 38.2c-11.2 31.2-29.7 59.7-54.1 84.1C377.2 444.9 328.6 464 276.6 464c-51.5 0-100-19.4-136.5-54.8l-21.2-21.2 10.3-10.3c9.4-9.4 24.6-9.4 33.9 0l64 64c9.4 9.4 9.4 24.6 0 33.9l-64 64c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l10.3-10.3 21.2 21.2c41.9 41.9 113.2 62.6 190 62.6c66.7 0 126.6-23.9 171.4-64.4c25.7-24.4 46.4-52.5 60.7-83.6c5.6-15.6-2.6-32.6-18.1-38.2s-23.7 2.6-29.3 18.1c-6.1 17.2-15.3 33.2-27.9 45.8l-64 64z"/></symbol>
+  <symbol id="i-code" viewBox="0 0 640 512"><path d="M392.8 1.2c-15-6-31.6 1.4-37.6 16.4l-128 384c-6 15 1.4 31.6 16.4 37.6s31.6-1.4 37.6-16.4l128-384c6-15-1.4-31.6-16.4-37.6zm-80 102.4L209.9 192l102.9 88.4c12.8 11 14.3 30 3.3 42.9s-30 14.3-42.9 3.3l-128-110c-6.9-5.9-10.9-14.5-10.9-23.6s3.9-17.7 10.9-23.6l128-110c12.8-11 31.9-9.5 42.9 3.3s11 30 3.3 42.9zm117.3 148.7c12.8 11 31.9 9.5 42.9-3.3s11-30 3.3-42.9L430.1 192l102.9-88.4c12.8-11 14.3-30 3.3-42.9s-30-14.3-42.9-3.3l-128 110c-6.9 5.9-10.9 14.5-10.9 23.6s3.9 17.7 10.9 23.6l128 110z"/></symbol>
+  <symbol id="i-circle-info" viewBox="0 0 512 512"><path d="M256 0C114.6 0 0 114.6 0 256s114.6 256 256 256s256-114.6 256-256S397.4 0 256 0zm0 128c17.7 0 32 14.3 32 32s-14.3 32-32 32s-32-14.3-32-32s14.3-32 32-32zm32 192v32H208V320h16V288H208c-8.8 0-16-7.2-16-16s7.2-16 16-16h48c8.8 0 16 7.2 16 16v32h16z"/></symbol>
+</svg>
+
+<!-- Header -->
+<header class="header" id="header">
+  <div class="header-left">
+    <div class="header-logo"><svg width="20" height="20" viewBox="0 0 512 512" fill="#fff"><use href="#i-shield-halved"/></svg></div>
+    <div class="header-title"><span>Shield</span>LLM <span class="header-badge">v1.2</span></div>
+  </div>
+  <div class="header-right">
+    <div class="header-status">
+      <span class="header-status-dot"></span>
+      <span id="status-text">System Live</span>
+    </div>
+    <span class="header-uptime mono" id="uptime-display">Uptime: &mdash;</span>
+  </div>
+</header>
+
+<!-- Container -->
+<div class="container">
+
+  <!-- Stats -->
+  <div class="grid grid-cols-4" id="stats-grid">
+    <div class="card stat-card s-cyan" data-stat="total">
+      <div class="stat-value mono" id="stat-total">0</div>
+      <div class="stat-label"><svg><use href="#i-arrow-right"/></svg>Total Requests</div>
+      <div class="stat-icon-deco"><svg><use href="#i-arrow-right"/></svg></div>
+    </div>
+    <div class="card stat-card s-green" data-stat="allowed">
+      <div class="stat-value mono" id="stat-allowed">0</div>
+      <div class="stat-label"><svg><use href="#i-check"/></svg>Allowed</div>
+      <div class="stat-icon-deco"><svg><use href="#i-check"/></svg></div>
+    </div>
+    <div class="card stat-card s-red" data-stat="ingress">
+      <div class="stat-value mono" id="stat-ingress">0</div>
+      <div class="stat-label"><svg><use href="#i-ban"/></svg>Ingress Blocks</div>
+      <div class="stat-icon-deco"><svg><use href="#i-ban"/></svg></div>
+    </div>
+    <div class="card stat-card s-amber" data-stat="egress">
+      <div class="stat-value mono" id="stat-egress">0</div>
+      <div class="stat-label"><svg><use href="#i-ban"/></svg>Egress Blocks</div>
+      <div class="stat-icon-deco"><svg><use href="#i-shield"/></svg></div>
+    </div>
+    <div class="card stat-card s-purple" data-stat="ratelimit">
+      <div class="stat-value mono" id="stat-ratelimit">0</div>
+      <div class="stat-label"><svg><use href="#i-gauge"/></svg>Rate Limited</div>
+      <div class="stat-icon-deco"><svg><use href="#i-gauge"/></svg></div>
+    </div>
+    <div class="card stat-card s-blue" data-stat="cache">
+      <div class="stat-value mono" id="stat-cache">0</div>
+      <div class="stat-label"><svg><use href="#i-database"/></svg>Cache Hits</div>
+      <div class="stat-icon-deco"><svg><use href="#i-database"/></svg></div>
+    </div>
+    <div class="card stat-card s-red" data-stat="errors">
+      <div class="stat-value mono" id="stat-errors">0</div>
+      <div class="stat-label"><svg><use href="#i-triangle"/></svg>Upstream Errors</div>
+      <div class="stat-icon-deco"><svg><use href="#i-triangle"/></svg></div>
+    </div>
+    <div class="card stat-card s-purple" data-stat="tokens">
+      <div class="stat-value mono" style="font-size:22px" id="stat-tokens">0</div>
+      <div class="stat-label"><svg><use href="#i-coins"/></svg>Total Tokens</div>
+      <div class="stat-icon-deco"><svg><use href="#i-coins"/></svg></div>
+    </div>
+  </div>
+
+  <!-- Feed + Chart -->
+  <div class="grid grid-cols-2" style="margin-top:18px">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><svg style="width:12px;height:12px;vertical-align:-2px;margin-right:6px;fill:var(--cyan)"><use href="#i-bolt"/></svg>Live Event Feed</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:10px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px" id="feed-count">0 events</span>
+          <button class="btn btn-ghost btn-sm" onclick="clearFeed()" style="padding:4px 10px;font-size:9px"><svg style="width:10px;height:10px"><use href="#i-broom"/></svg> Clear</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:4px;margin-bottom:10px;position:relative;z-index:1;flex-wrap:wrap" id="feed-filters">
+        <button class="tab-btn active" data-filter="all" style="flex:none;padding:4px 10px;font-size:9px">All</button>
+        <button class="tab-btn" data-filter="ingress" style="flex:none;padding:4px 10px;font-size:9px">Ingress</button>
+        <button class="tab-btn" data-filter="egress" style="flex:none;padding:4px 10px;font-size:9px">Egress</button>
+        <button class="tab-btn" data-filter="allowed" style="flex:none;padding:4px 10px;font-size:9px">Allowed</button>
+        <button class="tab-btn" data-filter="rate" style="flex:none;padding:4px 10px;font-size:9px">Rate</button>
+        <button class="tab-btn" data-filter="cache" style="flex:none;padding:4px 10px;font-size:9px">Cache</button>
+        <button class="tab-btn" data-filter="error" style="flex:none;padding:4px 10px;font-size:9px">Errors</button>
+      </div>
+      <div class="feed-scroll" id="feed-scroll">
+        <div class="feed-empty" id="feed-empty"><svg style="width:14px;height:14px;vertical-align:-2px;margin-right:6px;fill:var(--text-muted)"><use href="#i-circle-info"/></svg>Waiting for traffic...</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><svg style="width:12px;height:12px;vertical-align:-2px;margin-right:6px;fill:var(--green)"><use href="#i-chart"/></svg>Token Usage</span>
+        <span style="font-size:10px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px" id="chart-count">0 points</span>
+      </div>
+      <div style="display:flex;gap:16px;margin-bottom:12px;position:relative;z-index:1">
+        <div style="flex:1;text-align:center;padding:10px;background:rgba(6,182,212,0.06);border-radius:8px;border:1px solid rgba(6,182,212,0.1)">
+          <div style="font-size:10px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px">Prompt</div>
+          <div class="mono" style="font-size:18px;font-weight:700;color:var(--cyan)" id="token-prompt">0</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:10px;background:rgba(99,102,241,0.06);border-radius:8px;border:1px solid rgba(99,102,241,0.1)">
+          <div style="font-size:10px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px">Completion</div>
+          <div class="mono" style="font-size:18px;font-weight:700;color:var(--indigo)" id="token-completion">0</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:10px;background:rgba(16,185,129,0.06);border-radius:8px;border:1px solid rgba(16,185,129,0.1)">
+          <div style="font-size:10px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px">Total</div>
+          <div class="mono" style="font-size:18px;font-weight:700;color:var(--green)" id="token-total">0</div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="token-chart"></canvas>
+        <div class="chart-fallback" id="chart-fallback"><svg style="width:32px;height:32px;margin-bottom:8px;fill:var(--text-muted)"><use href="#i-chart"/></svg><br>Chart unavailable</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Config -->
+  <div class="card" style="margin-top:18px">
+    <div class="tabs" id="config-tabs">
+      <button class="tab-btn active" data-tab="tab-rate">Rate Limiter</button>
+      <button class="tab-btn" data-tab="tab-limits">Limits</button>
+      <button class="tab-btn" data-tab="tab-circuit">Circuit Breaker</button>
+      <button class="tab-btn" data-tab="tab-exfil">Exfiltration</button>
+      <button class="tab-btn" data-tab="tab-safety">Safety</button>
+      <button class="tab-btn" data-tab="tab-cyber">Cyber</button>
+      <button class="tab-btn" data-tab="tab-keywords">Keywords</button>
+      <button class="tab-btn" data-tab="tab-jailbreak">Jailbreak</button>
+      <button class="tab-btn" data-tab="tab-ipfilter">IP Filter</button>
+      <button class="tab-btn" data-tab="tab-actions">Actions</button>
+    </div>
+
+    <div class="tab-content active" id="tab-rate">
+      <div class="grid grid-cols-2">
+        <div class="form-group"><label class="form-label">Window (seconds)</label><input class="form-input mono" id="cfg-window" type="number" min="1" value="60"></div>
+        <div class="form-group"><label class="form-label">Max Tokens</label><input class="form-input mono" id="cfg-max-tokens" type="number" min="1" value="400"></div>
+      </div>
+      <button class="btn btn-primary" onclick="updateConfig()"><svg><use href="#i-floppy"/></svg> Save Rate Limiter</button>
+    </div>
+    <div class="tab-content" id="tab-limits">
+      <div class="grid grid-cols-2">
+        <div class="form-group"><label class="form-label">Max Message Chars</label><input class="form-input mono" id="cfg-max-msg" type="number" min="1" value="16000"></div>
+        <div class="form-group"><label class="form-label">Max Response Chars</label><input class="form-input mono" id="cfg-max-resp" type="number" min="1" value="10000"></div>
+      </div>
+      <div class="grid grid-cols-2" style="margin-top:12px">
+        <div class="form-group"><label class="form-label">Many-Shot Threshold</label><input class="form-input mono" id="cfg-many-shot" type="number" min="1" value="20"></div>
+        <div class="form-group"><label class="form-label">Max Length Ratio</label><input class="form-input mono" id="cfg-length-ratio" type="number" min="1" value="200"></div>
+      </div>
+      <button class="btn btn-primary" onclick="updateLimits()"><svg><use href="#i-floppy"/></svg> Save Limits</button>
+    </div>
+    <div class="tab-content" id="tab-circuit">
+      <div class="grid grid-cols-2">
+        <div class="form-group"><label class="form-label">Failure Threshold</label><input class="form-input mono" id="cfg-cb-threshold" type="number" min="1" value="3"></div>
+        <div class="form-group"><label class="form-label">Reset (seconds)</label><input class="form-input mono" id="cfg-cb-reset" type="number" min="1" value="300"></div>
+      </div>
+      <button class="btn btn-primary" onclick="updateCircuitBreaker()"><svg><use href="#i-floppy"/></svg> Save Circuit Breaker</button>
+    </div>
+    <div class="tab-content" id="tab-exfil">
+      <div style="margin-bottom:14px;color:var(--text-secondary);font-size:12px;line-height:1.6">
+        Scans LLM responses for leaked secrets: API keys, JWT tokens, private keys, database connection strings, and other credentials.
+      </div>
+      <div class="rule-scroll" style="max-height:200px">
+        <div class="rule-item"><span><svg style="width:10px;height:10px;vertical-align:-1px;margin-right:6px;fill:var(--red)"><use href="#i-ban"/></svg>OpenAI / Anthropic API keys</span></div>
+        <div class="rule-item"><span><svg style="width:10px;height:10px;vertical-align:-1px;margin-right:6px;fill:var(--red)"><use href="#i-ban"/></svg>AWS / GCP access keys</span></div>
+        <div class="rule-item"><span><svg style="width:10px;height:10px;vertical-align:-1px;margin-right:6px;fill:var(--red)"><use href="#i-ban"/></svg>JWT tokens</span></div>
+        <div class="rule-item"><span><svg style="width:10px;height:10px;vertical-align:-1px;margin-right:6px;fill:var(--red)"><use href="#i-ban"/></svg>Private key blocks (RSA, DSA, EC)</span></div>
+        <div class="rule-item"><span><svg style="width:10px;height:10px;vertical-align:-1px;margin-right:6px;fill:var(--red)"><use href="#i-ban"/></svg>Database connection strings</span></div>
+        <div class="rule-item"><span><svg style="width:10px;height:10px;vertical-align:-1px;margin-right:6px;fill:var(--red)"><use href="#i-ban"/></svg>GitHub / Slack / Stripe tokens</span></div>
+      </div>
+      <div style="margin-top:12px;color:var(--text-muted);font-size:11px">Always active — no configuration needed.</div>
+    </div>
+    <div class="tab-content" id="tab-safety">
+      <div style="margin-bottom:14px;color:var(--text-secondary);font-size:12px;line-height:1.6">
+        Blocks harmful content in LLM responses and detects self-contradictions that indicate prompt manipulation.
+      </div>
+      <div class="rule-scroll" style="max-height:200px">
+        <div class="rule-item"><span><svg style="width:10px;height:10px;vertical-align:-1px;margin-right:6px;fill:var(--red)"><use href="#i-ban"/></svg>Hateful rhetoric &amp; violent threats</span></div>
+        <div class="rule-item"><span><svg style="width:10px;height:10px;vertical-align:-1px;margin-right:6px;fill:var(--red)"><use href="#i-ban"/></svg>Weapon / explosive instructions</span></div>
+        <div class="rule-item"><span><svg style="width:10px;height:10px;vertical-align:-1px;margin-right:6px;fill:var(--red)"><use href="#i-ban"/></svg>Self-harm / suicide content</span></div>
+        <div class="rule-item"><span><svg style="width:10px;height:10px;vertical-align:-1px;margin-right:6px;fill:var(--red)"><use href="#i-ban"/></svg>Illegal activity instructions</span></div>
+        <div class="rule-item"><span><svg style="width:10px;height:10px;vertical-align:-1px;margin-right:6px;fill:var(--purple)"><use href="#i-code"/></svg>Response self-contradiction detection</span></div>
+      </div>
+      <div style="margin-top:12px;color:var(--text-muted);font-size:11px">Always active — no configuration needed.</div>
+    </div>
+    <div class="tab-content" id="tab-cyber">
+      <div style="margin-bottom:14px;color:var(--text-secondary);font-size:12px;line-height:1.6">
+        Traditional cybersecurity detections applied to LLM prompts and responses.
+      </div>
+      <div class="rule-scroll" style="max-height:260px">
+        <div class="rule-item"><span><svg style="width:10px;height:10px;vertical-align:-1px;margin-right:6px;fill:var(--red)"><use href="#i-ban"/></svg>SSRF attempt detection (ingress)</span><span style="font-size:10px;color:var(--text-muted)">Cloud metadata, localhost, private IPs</span></div>
+        <div class="rule-item"><span><svg style="width:10px;height:10px;vertical-align:-1px;margin-right:6px;fill:var(--red)"><use href="#i-ban"/></svg>Internal network leakage (egress)</span><span style="font-size:10px;color:var(--text-muted)">10.x, 192.168.x, .internal, .local</span></div>
+        <div class="rule-item"><span><svg style="width:10px;height:10px;vertical-align:-1px;margin-right:6px;fill:var(--red)"><use href="#i-ban"/></svg>Malicious URL / phishing (egress)</span><span style="font-size:10px;color:var(--text-muted)">Suspicious TLDs, phishing language</span></div>
+        <div class="rule-item"><span><svg style="width:10px;height:10px;vertical-align:-1px;margin-right:6px;fill:var(--red)"><use href="#i-ban"/></svg>XSS / script injection (egress)</span><span style="font-size:10px;color:var(--text-muted)">&lt;script&gt;, javascript:, event handlers</span></div>
+        <div class="rule-item"><span><svg style="width:10px;height:10px;vertical-align:-1px;margin-right:6px;fill:var(--red)"><use href="#i-ban"/></svg>Command injection (egress)</span><span style="font-size:10px;color:var(--text-muted)">curl, wget, chmod, eval, bash -c</span></div>
+      </div>
+      <div style="margin-top:12px;color:var(--text-muted);font-size:11px">Always active — no configuration needed.</div>
+    </div>
+    <div class="tab-content" id="tab-keywords">
+      <div class="form-row" style="margin-bottom:14px">
+        <div class="form-group"><label class="form-label">Add Keyword</label><input class="form-input mono" id="keyword-input" placeholder="e.g. write code"></div>
+        <button class="btn btn-primary" style="margin-bottom:0;align-self:end" onclick="addKeyword()"><svg><use href="#i-plus"/></svg> Add</button>
+      </div>
+      <div class="rule-scroll" id="keyword-list"><span class="rule-empty">Loading...</span></div>
+    </div>
+    <div class="tab-content" id="tab-jailbreak">
+      <div class="form-row" style="margin-bottom:14px">
+        <div class="form-group"><label class="form-label">Add Regex Pattern</label><input class="form-input mono" id="jailbreak-input" placeholder="e.g. (?i)bypass.*restrictions"></div>
+        <button class="btn btn-primary" style="margin-bottom:0;align-self:end" onclick="addJailbreak()"><svg><use href="#i-plus"/></svg> Add</button>
+      </div>
+      <div class="rule-scroll" id="jailbreak-list"><span class="rule-empty">Loading...</span></div>
+    </div>
+    <div class="tab-content" id="tab-ipfilter">
+      <div class="grid grid-cols-2">
+        <div class="form-group"><label class="form-label">Allowlist</label><textarea class="form-input mono" id="cfg-allowlist" rows="4" style="font-size:12px"></textarea></div>
+        <div class="form-group"><label class="form-label">Blocklist</label><textarea class="form-input mono" id="cfg-blocklist" rows="4" style="font-size:12px"></textarea></div>
+      </div>
+      <button class="btn btn-primary" onclick="updateIPFilter()"><svg><use href="#i-floppy"/></svg> Save IP Filter</button>
+    </div>
+    <div class="tab-content" id="tab-actions">
+      <div style="display:flex;flex-wrap:wrap;gap:10px">
+        <button class="btn btn-danger" onclick="clearCache()"><svg><use href="#i-broom"/></svg> Clear Cache</button>
+        <button class="btn btn-ghost" onclick="resetCircuit()"><svg><use href="#i-rotate"/></svg> Reset Circuit Breaker</button>
+        <button class="btn btn-ghost" onclick="resetRateLimiter()"><svg><use href="#i-rotate"/></svg> Reset Rate Limiter</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-box" id="toast-box"></div>
+
+<!-- Event Modal -->
+<div class="modal-overlay" id="event-modal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeEventModal()"><svg><use href="#i-xmark"/></svg></button>
+    <div class="modal-title" id="modal-title">Event Details</div>
+    <div class="modal-badge" id="modal-badge">UNKNOWN</div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var ec=0,chart;
+
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+function toast(m,t){
+  t=t||'info';var b=$('toast-box'),e=document.createElement('div');
+  e.className='toast t-'+t;
+  e.innerHTML=(t==='success'?'\u2713':t==='error'?'\u2717':'\u2139')+' '+esc(m);
+  b.appendChild(e);
+  setTimeout(function(){e.style.opacity='0';e.style.transform='translateX(40px)';e.style.transition='all 0.3s';setTimeout(function(){e.remove()},300)},3500);
+}
+
+function BarChart(id){
+  var c=document.getElementById(id);
+  if(!c||!c.getContext('2d'))return null;
+  var ctx=c.getContext('2d'),W,H,dpr=window.devicePixelRatio||1;
+  function rs(){
+    var r=c.parentElement.getBoundingClientRect();
+    W=Math.floor(r.width);H=Math.floor(r.height);
+    if(W<10||H<10)return;
+    c.width=W*dpr;c.height=H*dpr;
+    c.style.width=W+'px';c.style.height=H+'px';
+    ctx.scale(dpr,dpr);
+  }
+  function render(d1,d2){
+    rs();ctx.clearRect(0,0,W,H);
+    if(!d1||d1.length<2){
+      ctx.fillStyle='#64748b';ctx.font='13px sans-serif';
+      ctx.textAlign='center';ctx.fillText('Waiting for data...',W/2,H/2);return;
+    }
+    var p={t:10,b:26,l:8,r:8},cw=W-p.l-p.r,ch=H-p.t-p.b,max=1;
+    for(var i=0;i<d1.length;i++)max=Math.max(max,d1[i]+(d2?d2[i]||0:0));
+    if(max===0)max=1;
+    var n=Math.min(d1.length,80);
+    var bw=Math.min(10,(cw-(n-1)*2)/n),gap=n>1?(cw-n*bw)/(n-1):0;
+    if(gap<0){gap=0;bw=cw/n;}
+    var sx=p.l+(cw-(n*bw+(n-1)*gap))/2;
+    for(var i=0;i<n;i++){
+      var idx=d1.length-n+i,v1=d1[idx]||0,v2=d2?d2[idx]||0:0;
+      var h1=(v1/max)*ch,h2=(v2/max)*ch;
+      var x=sx+i*(bw+gap),y=p.t+ch-h1-h2;
+      if(h2>0){ctx.fillStyle='rgba(99,102,241,0.6)';ctx.fillRect(x,y,bw,h2);}
+      if(h1>0){ctx.fillStyle='rgba(6,182,212,0.6)';ctx.fillRect(x,p.t+ch-h1,bw,h1);}
+    }
+  }
+  return{render:render,resize:rs};
+}
+
+function connectSSE(){
+  try{
+    var es=new EventSource('/events');
+    es.onmessage=function(e){try{handleEvent(JSON.parse(e.data))}catch(ex){}};
+    es.onerror=function(){};
+  }catch(ex){}
+}
+
+var savedEvents=JSON.parse(localStorage.getItem('shieldllm_events')||'[]');
+var feedFilter='all';
+
+function openEventModal(d){
+  $('event-modal').classList.add('open');
+  var t=d.shieldllm_event||'UNKNOWN';
+  $('modal-title').textContent=t;
+  var badge=$('modal-badge');
+  badge.textContent=t;
+  badge.className='modal-badge';
+  if(t.indexOf('INGRESS')!==-1||t.indexOf('EGRESS')!==-1)badge.classList.add('m-block');
+  else if(t==='ALLOWED')badge.classList.add('m-allowed');
+  else if(t.indexOf('RATE')!==-1)badge.classList.add('m-rate');
+  else if(t.indexOf('CACHE')!==-1)badge.classList.add('m-cache');
+  var body=$('modal-body');body.innerHTML='';
+  var ts=d.timestamp||new Date().toLocaleString();
+  var fields=[
+    {label:'Event',value:t},
+    {label:'Rule Triggered',value:d.rule_triggered||'-'},
+    {label:'Provider',value:d.provider||'-'},
+    {label:'Client IP',value:d.masked_client_ip||'-'},
+    {label:'Prompt Tokens',value:d.prompt_tokens!==undefined?d.prompt_tokens:'-'},
+    {label:'Completion Tokens',value:d.completion_tokens!==undefined?d.completion_tokens:'-'},
+    {label:'Prompt Length',value:d.prompt_length!==undefined?d.prompt_length:'-'},
+    {label:'Message Count',value:d.message_count!==undefined?d.message_count:'-'},
+    {label:'Detail',value:d.detail||d.reason||'-'},
+    {label:'Timestamp',value:ts}
+  ];
+  fields.forEach(function(f){
+    if(f.value==='-'&&f.label!=='Event')return;
+    var el=document.createElement('div');el.className='modal-field';
+    el.innerHTML='<div class="modal-field-label">'+esc(f.label)+
+      '</div><div class="modal-field-value'+(f.label==='Prompt Tokens'||f.label==='Completion Tokens'?' mono':'')+'">'+
+      esc(String(f.value))+'</div>';
+    body.appendChild(el);
+  });
+}
+window.closeEventModal=function(){$('event-modal').classList.remove('open')};
+$('event-modal').addEventListener('click',function(e){if(e.target===this)closeEventModal()});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeEventModal()});
+
+function eventType(t){
+  if(t.indexOf('INGRESS')!==-1)return'ingress';
+  if(t.indexOf('EGRESS')!==-1)return'egress';
+  if(t==='ALLOWED')return'allowed';
+  if(t.indexOf('RATE')!==-1)return'rate';
+  if(t.indexOf('CACHE')!==-1)return'cache';
+  if(t.indexOf('ERROR')!==-1)return'error';
+  return'other';
+}
+function eventColor(t){
+  if(t.indexOf('INGRESS')!==-1||t.indexOf('EGRESS')!==-1)return'var(--red)';
+  if(t==='ALLOWED')return'var(--green)';
+  if(t.indexOf('RATE')!==-1)return'var(--amber)';
+  if(t.indexOf('CACHE')!==-1)return'var(--cyan)';
+  if(t.indexOf('ERROR')!==-1)return'var(--pink)';
+  return'var(--purple)';
+}
+function eventDotClass(t){
+  if(t.indexOf('INGRESS')!==-1||t.indexOf('EGRESS')!==-1)return'f-egress';
+  if(t.indexOf('RATE')!==-1)return'f-rate';
+  if(t==='ALLOWED')return'f-allowed';
+  if(t.indexOf('CACHE')!==-1)return'f-cache';
+  if(t.indexOf('ERROR')!==-1)return'f-error';
+  return'f-config';
+}
+
+function saveEvents(){
+  if(savedEvents.length>500)savedEvents=savedEvents.slice(-500);
+  localStorage.setItem('shieldllm_events',JSON.stringify(savedEvents));
+}
+
+function renderFeed(){
+  var feed=$('feed-scroll'),emp=$('feed-empty');
+  if(!feed)return;
+  feed.innerHTML='';
+  var filtered=savedEvents;
+  if(feedFilter!=='all')filtered=savedEvents.filter(function(e){return eventType(e.shieldllm_event||'')===feedFilter});
+  if(filtered.length===0){
+    feed.appendChild(emp);
+    $('feed-count').textContent='0 events';
+    return;
+  }
+  $('feed-count').textContent=filtered.length+' events';
+  filtered.slice().reverse().forEach(function(d){
+    var t=d.shieldllm_event||'UNKNOWN';
+    if(t==='CONNECTED')return;
+    var el=document.createElement('div');el.className='feed-item';
+    var dc=eventDotClass(t);
+    var rule=esc(d.rule_triggered||d.provider||''),detail='',time=esc(d._time_display||'');
+    if(d.prompt_tokens!==undefined)detail+='prompt='+d.prompt_tokens+' ';
+    if(d.completion_tokens!==undefined)detail+='completion='+d.completion_tokens+' ';
+    if(d.prompt_length!==undefined)detail+='len='+d.prompt_length+' ';
+    if(d.message_count!==undefined)detail+='msgs='+d.message_count+' ';
+    if(d.masked_client_ip)detail+='ip='+esc(d.masked_client_ip)+' ';
+    el.innerHTML='<span class="feed-dot '+dc+'"></span><div class="feed-content">'+
+      '<div class="feed-type">'+esc(t)+(rule?' <span style="color:var(--text-muted);font-weight:400">\u2014 '+rule+'</span>':'')+'</div>'+
+      (detail?'<div class="feed-detail">'+detail.trim()+'</div>':'')+
+      '<div class="feed-time mono">'+time+'</div></div>';
+    el.style.cursor='pointer';
+    el.addEventListener('click',function(){openEventModal(d)});
+    feed.appendChild(el);
+  });
+}
+
+window.clearFeed=function(){
+  savedEvents=[];
+  saveEvents();
+  renderFeed();
+  postJSON('/api/events/clear',{},'');
+};
+
+function handleEvent(d){
+  var t=d.shieldllm_event||'UNKNOWN';
+  if(t==='CONNECTED')return;
+  var now=new Date();
+  d._time_display=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+  d.timestamp=d.timestamp||now.toLocaleString();
+  savedEvents.push(d);
+  saveEvents();
+  renderFeed();
+}
+
+// Feed filter buttons
+document.querySelectorAll('#feed-filters .tab-btn').forEach(function(b){
+  b.addEventListener('click',function(){
+    document.querySelectorAll('#feed-filters .tab-btn').forEach(function(x){x.classList.remove('active')});
+    b.classList.add('active');
+    feedFilter=b.dataset.filter;
+    renderFeed();
+  });
+});
+
+function fetchStats(){
+  var x=new XMLHttpRequest();
+  x.open('GET','/api/stats',true);
+  x.onload=function(){
+    if(x.status!==200)return;
+    try{
+      var s=JSON.parse(x.responseText);
+      animateVal($('stat-total'),s.total_requests||0);
+      animateVal($('stat-allowed'),s.allowed||0);
+      animateVal($('stat-ingress'),s.ingress_blocks||0);
+      animateVal($('stat-egress'),s.egress_blocks||0);
+      animateVal($('stat-ratelimit'),s.rate_limits||0);
+      animateVal($('stat-cache'),s.cache_hits||0);
+      animateVal($('stat-errors'),s.upstream_errors||0);
+      animateVal($('stat-tokens'),(s.total_prompt_tokens||0)+(s.total_completion_tokens||0));
+      if(s.total_prompt_tokens!==undefined)$('token-prompt').textContent=Number(s.total_prompt_tokens).toLocaleString();
+      if(s.total_completion_tokens!==undefined)$('token-completion').textContent=Number(s.total_completion_tokens).toLocaleString();
+      $('token-total').textContent=(Number(s.total_prompt_tokens||0)+Number(s.total_completion_tokens||0)).toLocaleString();
+      var u=s.uptime_seconds||0,h=Math.floor(u/3600),m=Math.floor((u%3600)/60),sc=Math.floor(u%60);
+      $('uptime-display').textContent='Uptime: '+h+'h '+m+'m '+sc+'s';
+      if(chart&&s.token_history){
+        chart.render(s.token_history.map(function(h){return h.prompt_tokens||0}),s.token_history.map(function(h){return h.completion_tokens||0}));
+        $('chart-count').textContent=s.token_history.length+' points';
+      }
+    }catch(ex){}
+  };x.send();
+}
+
+function animateVal(el,target){
+  var cur=parseInt(el.textContent.replace(/,/g,''))||0;
+  if(cur===target)return;
+  var start=cur,diff=target-start,st=performance.now();
+  function step(now){
+    var p=Math.min((now-st)/350,1);
+    var e=p<0.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2;
+    el.textContent=Math.round(start+diff*e).toLocaleString();
+    if(p<1)requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function loadConfig(){
+  var x=new XMLHttpRequest();
+  x.open('GET','/api/config',true);
+  x.onload=function(){
+    if(x.status!==200)return;
+    try{var c=JSON.parse(x.responseText);
+      $('cfg-window').value=(c.rate_limiter&&c.rate_limiter.window_seconds)||60;
+      $('cfg-max-tokens').value=(c.rate_limiter&&c.rate_limiter.max_tokens)||400;
+      $('cfg-max-msg').value=(c.ingress&&c.ingress.max_message_chars)||16000;
+      $('cfg-max-resp').value=(c.egress&&c.egress.max_response_chars)||10000;
+      $('cfg-cb-threshold').value=(c.circuit_breaker&&c.circuit_breaker.threshold)||3;
+      $('cfg-cb-reset').value=(c.circuit_breaker&&c.circuit_breaker.reset_seconds)||300;
+    }catch(ex){}
+  };x.send();
+  var x2=new XMLHttpRequest();
+  x2.open('GET','/api/ip-filter',true);
+  x2.onload=function(){
+    if(x2.status!==200)return;
+    try{var ip=JSON.parse(x2.responseText);
+      $('cfg-allowlist').value=(ip.allowlist||[]).join('\n');
+      $('cfg-blocklist').value=(ip.blocklist||[]).join('\n');
+    }catch(ex){}
+  };x2.send();
+  var x3=new XMLHttpRequest();
+  x3.open('GET','/api/rules/many-shot',true);
+  x3.onload=function(){
+    if(x3.status!==200)return;
+    try{var ms=JSON.parse(x3.responseText);
+      $('cfg-many-shot').value=ms.threshold||20;
+    }catch(ex){}
+  };x3.send();
+  var x4=new XMLHttpRequest();
+  x4.open('GET','/api/rules/length-ratio',true);
+  x4.onload=function(){
+    if(x4.status!==200)return;
+    try{var lr=JSON.parse(x4.responseText);
+      $('cfg-length-ratio').value=lr.max_ratio||200;
+    }catch(ex){}
+  };x4.send();
+}
+
+function postJSON(url,body,msg){
+  var x=new XMLHttpRequest();
+  x.open('POST',url,true);
+  x.setRequestHeader('Content-Type','application/json');
+  x.onload=function(){toast(x.status===200?msg:'Failed',x.status===200?'success':'error')};
+  x.send(JSON.stringify(body));
+}
+window.updateConfig=function(){postJSON('/api/config',{rate_limiter:{window_seconds:parseInt($('cfg-window').value),max_tokens:parseInt($('cfg-max-tokens').value)}},'Rate limiter saved')};
+window.updateLimits=function(){
+  postJSON('/api/config',{ingress:{max_message_chars:parseInt($('cfg-max-msg').value)},egress:{max_response_chars:parseInt($('cfg-max-resp').value)}},'Limits saved');
+  var ms=parseInt($('cfg-many-shot').value);
+  if(ms>0)postJSON('/api/rules/many-shot',{threshold:ms},'');
+  var lr=parseInt($('cfg-length-ratio').value);
+  if(lr>0)postJSON('/api/rules/length-ratio',{max_ratio:lr},'');
+};
+window.updateCircuitBreaker=function(){postJSON('/api/config',{circuit_breaker:{threshold:parseInt($('cfg-cb-threshold').value),reset_seconds:parseInt($('cfg-cb-reset').value)}},'Circuit breaker saved')};
+
+function loadKeywords(){
+  var x=new XMLHttpRequest();
+  x.open('GET','/api/rules/ingress',true);
+  x.onload=function(){
+    if(x.status!==200)return;
+    try{var d=JSON.parse(x.responseText);var list=$('keyword-list');list.innerHTML='';
+      if(!d.keywords||d.keywords.length===0){list.innerHTML='<span class="rule-empty">No custom keywords</span>';return;}
+      d.keywords.forEach(function(kw){
+        var el=document.createElement('div');el.className='rule-item';
+        var encoded=encodeURIComponent(kw);
+        el.innerHTML='<span><svg style="width:10px;height:10px;vertical-align:-1px;margin-right:6px;fill:var(--red)"><use href="#i-ban"/></svg>'+esc(kw)+'</span>'+
+          '<button class="btn btn-ghost btn-sm btn-icon" data-kw="'+encoded+'"><svg style="width:10px;height:10px"><use href="#i-xmark"/></svg></button>';
+        el.querySelector('button').onclick=function(){removeKeyword(decodeURIComponent(this.dataset.kw))};
+        list.appendChild(el);
+      });
+    }catch(ex){}
+  };x.send();
+}
+window.addKeyword=function(){
+  var inp=$('keyword-input'),kw=inp.value.trim();
+  if(!kw){toast('Enter a keyword','error');return;}
+  var x=new XMLHttpRequest();
+  x.open('POST','/api/rules/ingress/keywords',true);
+  x.setRequestHeader('Content-Type','application/json');
+  x.onload=function(){
+    if(x.status===200){inp.value='';toast('Added: '+kw,'success');loadKeywords();}
+    else{try{var e=JSON.parse(x.responseText);toast(e.error||'Failed','error');}catch(ex){toast('Failed','error');}}
+  };x.send(JSON.stringify({keyword:kw}));
+};
+window.removeKeyword=function(kw){
+  var x=new XMLHttpRequest();
+  x.open('DELETE','/api/rules/ingress/keywords',true);
+  x.setRequestHeader('Content-Type','application/json');
+  x.onload=function(){if(x.status===200){toast('Removed','info');loadKeywords();}else toast('Failed','error');};
+  x.send(JSON.stringify({keyword:kw}));
+};
+
+function loadJailbreak(){
+  var x=new XMLHttpRequest();
+  x.open('GET','/api/rules/ingress',true);
+  x.onload=function(){
+    if(x.status!==200)return;
+    try{var d=JSON.parse(x.responseText);var list=$('jailbreak-list');list.innerHTML='';
+      if(!d.jailbreak_patterns||d.jailbreak_patterns.length===0){list.innerHTML='<span class="rule-empty">No custom patterns</span>';return;}
+      d.jailbreak_patterns.forEach(function(p){
+        var el=document.createElement('div');el.className='rule-item';
+        var disp=p.length>60?esc(p.slice(0,57))+'...':esc(p);
+        var encoded=encodeURIComponent(p);
+        el.innerHTML='<span><svg style="width:10px;height:10px;vertical-align:-1px;margin-right:6px;fill:var(--purple)"><use href="#i-code"/></svg>'+disp+'</span>'+
+          '<button class="btn btn-ghost btn-sm btn-icon" data-pattern="'+encoded+'"><svg style="width:10px;height:10px"><use href="#i-xmark"/></svg></button>';
+        el.querySelector('button').onclick=function(){removeJailbreak(decodeURIComponent(this.dataset.pattern))};
+        list.appendChild(el);
+      });
+    }catch(ex){}
+  };x.send();
+}
+window.addJailbreak=function(){
+  var inp=$('jailbreak-input'),p=inp.value.trim();
+  if(!p){toast('Enter a regex pattern','error');return;}
+  var x=new XMLHttpRequest();
+  x.open('POST','/api/rules/ingress/jailbreak',true);
+  x.setRequestHeader('Content-Type','application/json');
+  x.onload=function(){
+    if(x.status===200){inp.value='';toast('Pattern added','success');loadJailbreak();}
+    else{try{var e=JSON.parse(x.responseText);toast(e.error||'Invalid pattern','error');}catch(ex){toast('Invalid pattern','error');}}
+  };x.send(JSON.stringify({pattern:p}));
+};
+window.removeJailbreak=function(p){
+  var x=new XMLHttpRequest();
+  x.open('DELETE','/api/rules/ingress/jailbreak',true);
+  x.setRequestHeader('Content-Type','application/json');
+  x.onload=function(){if(x.status===200){toast('Removed','info');loadJailbreak();}else toast('Failed','error');};
+  x.send(JSON.stringify({pattern:p}));
+};
+
+window.updateIPFilter=function(){
+  postJSON('/api/ip-filter',{
+    allowlist:$('cfg-allowlist').value.split('\n').map(function(s){return s.trim()}).filter(Boolean),
+    blocklist:$('cfg-blocklist').value.split('\n').map(function(s){return s.trim()}).filter(Boolean)
+  },'IP filter saved');
+};
+window.clearCache=function(){postJSON('/api/cache/clear',{},'Cache cleared')};
+window.resetCircuit=function(){postJSON('/api/router/reset-circuit',{},'Circuit breaker reset')};
+window.resetRateLimiter=function(){postJSON('/api/rate-limiter/reset',{},'Rate limiter reset')};
+
+document.querySelectorAll('#config-tabs .tab-btn').forEach(function(b){
+  b.addEventListener('click',function(){
+    document.querySelectorAll('#config-tabs .tab-btn').forEach(function(x){x.classList.remove('active')});
+    document.querySelectorAll('.tab-content').forEach(function(x){x.classList.remove('active')});
+    b.classList.add('active');document.getElementById(b.dataset.tab).classList.add('active');
+  });
+});
+
+window.addEventListener('scroll',function(){$('header').classList.toggle('scrolled',window.scrollY>10)});
+
+var statLabels={
+  total:'Total Requests',allowed:'Allowed',ingress:'Ingress Blocks',
+  egress:'Egress Blocks',ratelimit:'Rate Limited',cache:'Cache Hits',
+  errors:'Upstream Errors',tokens:'Total Tokens'
+};
+document.querySelectorAll('.stat-card').forEach(function(card){
+  card.addEventListener('click',function(){
+    var st=this.dataset.stat;
+    var val=$('stat-'+st).textContent;
+    $('event-modal').classList.add('open');
+    $('modal-title').textContent=statLabels[st]||st;
+    var badge=$('modal-badge');
+    badge.textContent='Value: '+val;
+    badge.className='modal-badge m-allowed';
+    var body=$('modal-body');body.innerHTML='<div style="margin-bottom:16px;color:var(--text-secondary);font-size:13px">Click <strong style="color:var(--cyan)">/api/stats</strong> for programmatic access.</div>';
+    var x=new XMLHttpRequest();
+    x.open('GET','/api/events/history',true);
+    x.onload=function(){
+      if(x.status!==200)return;
+      try{
+        var events=JSON.parse(x.responseText);
+        if(!Array.isArray(events)||events.length===0){
+          body.innerHTML='<div style="color:var(--text-muted);text-align:center;padding:20px">No events recorded yet.</div>';
+          return;
+        }
+        var matching=[];
+        events.forEach(function(e){
+          var t=e.shieldllm_event||'';
+          if(st==='total')matching.push(e);
+          else if(st==='allowed'&&t==='ALLOWED')matching.push(e);
+          else if(st==='ingress'&&t.indexOf('INGRESS')!==-1)matching.push(e);
+          else if(st==='egress'&&t.indexOf('EGRESS')!==-1)matching.push(e);
+          else if(st==='ratelimit'&&t.indexOf('RATE')!==-1)matching.push(e);
+          else if(st==='cache'&&t.indexOf('CACHE')!==-1)matching.push(e);
+          else if(st==='errors'&&t.indexOf('ERROR')!==-1)matching.push(e);
+          else if(st==='tokens')matching.push(e);
+        });
+        if(matching.length===0){
+          body.innerHTML='<div style="color:var(--text-muted);text-align:center;padding:20px">No matching events.</div>';
+          return;
+        }
+        var html='<div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px">Recent Events ('+matching.length+')</div>';
+        matching.slice(0,30).forEach(function(e){
+          var t=e.shieldllm_event||'UNKNOWN';
+          var rule=esc(e.rule_triggered||e.provider||'');
+          var time='';
+          if(e.timestamp)time=esc(e.timestamp);
+          html+='<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(168,85,247,0.04);font-size:12px">'+
+            '<span style="min-width:8px;width:8px;height:8px;border-radius:50%;background:'+
+            (t.indexOf('INGRESS')!==-1||t.indexOf('EGRESS')!==-1?'var(--red)':
+            t==='ALLOWED'?'var(--green)':
+            t.indexOf('RATE')!==-1?'var(--amber)':
+            t.indexOf('CACHE')!==-1?'var(--cyan)':
+            t.indexOf('ERROR')!==-1?'var(--pink)':'var(--purple)')+'"></span>'+
+            '<span style="font-weight:600">'+esc(t)+'</span>'+
+            (rule?'<span style="color:var(--text-muted)">\u2014 '+rule+'</span>':'')+
+            (time?'<span style="margin-left:auto;color:var(--text-muted);font-size:10px;font-family:Menlo,monospace">'+time+'</span>':'')+
+            '</div>';
+        });
+        if(matching.length>30)html+='<div style="text-align:center;color:var(--text-muted);font-size:11px;margin-top:8px">... and '+(matching.length-30)+' more</div>';
+        body.innerHTML=html;
+      }catch(ex){body.innerHTML='<div style="color:var(--text-muted)">Error loading events</div>';}
+    };
+    x.send();
+  });
+});
+
+chart=BarChart('token-chart');
+if(!chart){var fb=$('chart-fallback');if(fb)fb.style.display='block';}
+connectSSE();loadConfig();loadKeywords();loadJailbreak();fetchStats();
+
+// Load events history from API and merge with stored
+var xh=new XMLHttpRequest();
+xh.open('GET','/api/events/history',true);
+xh.onload=function(){
+  if(xh.status!==200)return;
+  try{
+    var apiEvents=JSON.parse(xh.responseText);
+    if(Array.isArray(apiEvents)&&apiEvents.length>0){
+      // Merge: add any API events not in savedEvents (by _time)
+      var savedTimes={};
+      savedEvents.forEach(function(e){if(e._time)savedTimes[e._time]=true});
+      apiEvents.forEach(function(e){
+        if(e._time&&!savedTimes[e._time]){
+          var now=new Date();
+          e._time_display=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+          savedEvents.push(e);
+        }
+      });
+      saveEvents();
+      renderFeed();
+    }
+  }catch(ex){}
+};
+xh.send();
+
+renderFeed();
+setInterval(fetchStats,2000);
+})();
+</script>
+</body>
+</html>
