@@ -9,7 +9,6 @@ Supports a simple circuit-breaker pattern to avoid hammering a
 failing primary endpoint on every request.
 """
 
-import asyncio
 import logging
 import os
 import threading

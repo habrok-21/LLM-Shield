@@ -1,4 +1,3 @@
-import pytest
 from security.safety import check_safety, check_contradiction
 
 

@@ -1,4 +1,3 @@
-import pytest
 from security.egress import check_length_ratio, get_max_length_ratio, set_max_length_ratio
 
 

@@ -1,4 +1,3 @@
-import pytest
 from security.ingress import check_many_shot, get_many_shot_threshold, set_many_shot_threshold
 
 

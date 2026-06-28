@@ -1,4 +1,3 @@
-import pytest
 from security.cyber import (
     check_ssrf_attempt,
     check_internal_leakage,

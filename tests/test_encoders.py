@@ -1,4 +1,3 @@
-import pytest
 from security.encoders import analyze as check_encoded
 
 

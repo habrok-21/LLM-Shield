@@ -91,7 +91,6 @@ def score_base64(text: str) -> float:
 
 def score_hex(text: str) -> float:
     """Score 0.0–1.0 for hex-encoded content."""
-    hex_chars = set(string.hexdigits)
     # Look for hex sequences: long runs of hex chars
     runs = re.findall(r"[0-9a-fA-F]{10,}", text)
     if not runs:

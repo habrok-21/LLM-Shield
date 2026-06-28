@@ -18,11 +18,11 @@ import logging
 import os
 import re
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator
 
 import httpx
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 
 from security import (
     AuditLogger,
@@ -999,7 +999,7 @@ async def _proxy_streaming(
             })
             error_event = json.dumps({
                 "error": {
-                    "message": f"ShieldLLM upstream stream error",
+                    "message": "ShieldLLM upstream stream error",
                     "type": "upstream_error",
                     "code": "stream_error",
                 }

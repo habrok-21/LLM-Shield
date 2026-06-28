@@ -9,7 +9,6 @@ Model: ProtectAI/distilroberta-base-prompt-injection (~200MB)
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger("shieldllm.guard_hf")
 

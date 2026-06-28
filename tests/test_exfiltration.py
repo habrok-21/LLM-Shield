@@ -1,4 +1,3 @@
-import pytest
 from security.exfiltration import check_exfiltration
 
 

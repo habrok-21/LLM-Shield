@@ -1,7 +1,6 @@
 import threading
 import time
 from collections import deque
-from typing import Dict, List
 
 
 class StatsTracker:

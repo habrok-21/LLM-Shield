@@ -11,7 +11,7 @@ proxy can emit an error event instead of forwarding the violation.
 import json
 import re
 import logging
-from typing import AsyncGenerator, Optional, Tuple
+from typing import Optional, Tuple
 
 from .egress import EgressResult, check_egress
 from . import exfiltration

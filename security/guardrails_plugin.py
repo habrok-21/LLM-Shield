@@ -12,7 +12,6 @@ Install:  pip install guardrails-ai
 Enable:   export GUARDRAILS_ENABLED=true
 """
 
-import json
 import logging
 import os
 from typing import Optional
@@ -33,8 +32,6 @@ def _load():
         from guardrails import Guard
         from guardrails.hub import (
             DetectJailbreak,
-            OutputPaths,
-            RestrictToTopic,
             ToxicLanguage,
         )
 

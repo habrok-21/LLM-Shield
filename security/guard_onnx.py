@@ -11,10 +11,7 @@ Model: ProtectAI/distilroberta-base-prompt-injection
 
 import json
 import logging
-import os
-import tempfile
 from pathlib import Path
-from typing import Optional, Tuple
 
 logger = logging.getLogger("shieldllm.guard_onnx")
 

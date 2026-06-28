@@ -13,10 +13,8 @@ The guard is DISABLED by default. Set GUARD_MODEL_ENABLED=true to
 activate. On first run the model is downloaded and cached locally.
 """
 
-import json
 import logging
 import os
-import re
 from pathlib import Path
 from typing import Optional
 

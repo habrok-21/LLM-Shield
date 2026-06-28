@@ -11,7 +11,7 @@ Thread-safe via a per-identity reentrant lock.
 import time
 import threading
 from collections import defaultdict
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 
 class TokenBucketRateLimiter:
